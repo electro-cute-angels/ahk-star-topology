@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
+  <title>AHK STAR TOPOLOGY</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+  <div id="bg"></div>
+
+  <main>
+    <header>
+      <h1>Realtime Background Gallery</h1>
+      <div id="round">Round: <span id="roundNum">—</span></div>
+    </header>
+
+    <section class="controls">
+      <form id="uploadForm">
+        <input type="file" id="file" name="image" accept="image/*" required />
+        <button type="submit">Upload</button>
+        <small>One upload per round.</small>
+        <div class="msg" id="uploadMsg"></div>
+      </form>
+
+      <div class="admin">
+        <details>
+          <summary>Host Controls</summary>
+          <div class="admin-row">
+            <input type="password" id="adminKey" placeholder="Enter host key" />
+            <button id="loginBtn" type="button">Login</button>
+            <span id="adminStatus" class="muted">not logged in</span>
+          </div>
+          <div class="admin-row">
+            <button id="newRoundBtn" type="button" disabled>Start New Round</button>
+          </div>
+          <p class="muted">Tip: Click a thumbnail to set background (host only).</p>
+        </details>
+      </div>
+    </section>
+
+    <section>
+      <h2>Current Submissions</h2>
+      <div id="gallery" class="grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span id="bgHint" class="muted">Background updates live when the host selects an image.</span>
+  </footer>
+
+  <script src="client.js"></script>
+</body>
+</html>
