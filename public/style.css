@@ -16,7 +16,7 @@
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    opacity: 0.25;
+    opacity: 1;
     pointer-events: none;
     transition: background-image 0.2s ease, opacity 0.2s ease;
   }
