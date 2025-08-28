@@ -1,11 +1,8 @@
 const socket = io();
+
 let isAdmin = false;
 let currentRound = null;
-
-// For upload endpoint, we send our socket id as a header so server can enforce 1 per round.
-function getSocketId() {
-  return socket.id;
-}
+let subs = []; // authoritative client-side list for the current round
 
 // Elements
 const $roundNum = document.getElementById('roundNum');
@@ -18,15 +15,22 @@ const $loginBtn = document.getElementById('loginBtn');
 const $adminStatus = document.getElementById('adminStatus');
 const $newRoundBtn = document.getElementById('newRoundBtn');
 
-// Helpers
+function getSocketId() { return socket.id; }
+
 function setBackground(url) {
   const css = url ? `url("${url}")` : 'none';
   document.documentElement.style.setProperty('--bg-url', css);
 }
 
-function renderGallery(submissions) {
+function setRound(n) {
+  currentRound = n;
+  $roundNum.textContent = String(n);
+}
+
+function renderGallery(list) {
   $gallery.innerHTML = '';
-  submissions
+  list
+    .slice()
     .sort((a, b) => b.at - a.at)
     .forEach(s => {
       const card = document.createElement('div');
@@ -36,7 +40,7 @@ function renderGallery(submissions) {
       btn.className = 'thumb';
       btn.title = isAdmin ? 'Set as background (host)' : 'Only host can set this as background';
       btn.addEventListener('click', () => {
-        if (isAdmin) socket.emit('setBackground', s.id);
+        if (isAdmin) socket.emit('setBackground', s.id); // uses REAL id
       });
 
       const img = document.createElement('img');
@@ -55,28 +59,22 @@ function renderGallery(submissions) {
     });
 }
 
-function setRound(n) {
-  currentRound = n;
-  $roundNum.textContent = String(n);
-}
-
 // Socket events
-socket.on('connect', () => {
-  // Nothing to do; server will send state event.
-});
-
 socket.on('state', (state) => {
   setRound(state.currentRound);
   setBackground(state.backgroundUrl);
-  renderGallery(state.submissions);
+
+  // authoritative reset from server
+  subs = state.submissions || [];
+  renderGallery(subs);
 });
 
 socket.on('submission', (s) => {
   if (s.round !== currentRound) return;
-  // Append new card
-  const old = Array.from($gallery.querySelectorAll('img')).map(img => img.src);
-  if (!old.includes(location.origin + s.url)) {
-    renderGallery([{...s}, ...getCurrentCards()]);
+  // append only if this id is not present yet
+  if (!subs.find(x => x.id === s.id)) {
+    subs.push(s);
+    renderGallery(subs);
   }
 });
 
@@ -87,21 +85,16 @@ socket.on('backgroundSet', ({ backgroundUrl }) => {
 socket.on('roundReset', ({ currentRound }) => {
   setRound(currentRound);
   setBackground(null);
-  renderGallery([]);
+  subs = []; // new round = empty list
+  renderGallery(subs);
   $uploadMsg.textContent = '';
   $file.value = '';
 });
 
 socket.on('adminStatus', ({ ok }) => {
-  if (ok) {
-    isAdmin = true;
-    $adminStatus.textContent = 'host logged in';
-    $newRoundBtn.disabled = false;
-  } else {
-    isAdmin = false;
-    $adminStatus.textContent = 'wrong key';
-    $newRoundBtn.disabled = true;
-  }
+  isAdmin = !!ok;
+  $adminStatus.textContent = ok ? 'host logged in' : 'wrong key';
+  $newRoundBtn.disabled = !ok;
 });
 
 // Upload form
@@ -139,13 +132,3 @@ $loginBtn.addEventListener('click', () => {
 $newRoundBtn.addEventListener('click', () => {
   if (isAdmin) socket.emit('newRound');
 });
-
-// Util to retrieve current card data from DOM (for quick prepend)
-function getCurrentCards() {
-  // reconstruct minimal data (we only need url and at for ordering display)
-  const cards = [];
-  $gallery.querySelectorAll('.card img').forEach(img => {
-    cards.push({ id: 'dom', url: new URL(img.src).pathname, at: 0, round: currentRound });
-  });
-  return cards;
-}
